@@ -11,7 +11,9 @@ CREATE TABLE [USR].[USERS]
 CREATE TABLE [HISTORY].[USERS]
 (
 [ID] int IDENTITY(1,1) PRIMARY KEY,
+[UID] int,
 [USER_ID] VARCHAR(200),
+[STATUS] BIT,
 [history_by] VARCHAR(200) DEFAULT ORIGINAL_LOGIN(),
 [history_type] VARCHAR(2),
 [history_when] datetime DEFAULT GETDATE()
@@ -20,15 +22,15 @@ CREATE TABLE [HISTORY].[USERS]
 GO
 CREATE TRIGGER [USR].[USERS_history_INSERT] on [USR].[USERS] FOR INSERT
 AS
-INSERT INTO [history].[USERS] ([USER_ID], history_type) VALUES ((select [USER_ID] from INSERTED), 'IN')
+INSERT INTO [history].[USERS] ([UID], [USER_ID], [STATUS], history_type) SELECT [ID], [USER_ID], [STATUS], 'IN' from INSERTED
 GO
 CREATE TRIGGER [USR].[USERS_history_UPDATE] on [USR].[USERS] FOR UPDATE
 AS
-INSERT INTO [history].[USERS] ([USER_ID], history_type) VALUES ((select [USER_ID] from INSERTED), 'UP')
+INSERT INTO [history].[USERS] ([UID], [USER_ID], [STATUS], history_type) SELECT [ID], [USER_ID], [STATUS], 'UP' from INSERTED
 GO
 CREATE TRIGGER [USR].[USERS_history_DELETE] on [USR].[USERS] FOR DELETE
 AS
-INSERT INTO [history].[USERS] ([USER_ID], history_type) VALUES ((select [USER_ID] from deleted), 'DE')
+INSERT INTO [history].[USERS] ([UID], [USER_ID], [STATUS], history_type) SELECT [ID], [USER_ID], [STATUS], 'DE' from DELETED
 GO
 
 CREATE TABLE [USR].[USERS_DATA]
@@ -46,26 +48,27 @@ CREATE TABLE [HISTORY].[USERS_DATA]
 (
 [ID] int IDENTITY(1,1) PRIMARY KEY,
 [UID] int,
+[PID] int,
 [history_by] VARCHAR(200) DEFAULT ORIGINAL_LOGIN(),
 [history_type] VARCHAR(2),
 [history_when] datetime DEFAULT GETDATE()
 )
 
 GO
-CREATE TRIGGER [USR].[USERS_DATA_history_INSERT] on [USR].[USERS] FOR INSERT
+CREATE TRIGGER [USR].[USERS_DATA_history_INSERT] on [USR].[USERS_DATA] FOR INSERT
 AS
-INSERT INTO [history].[USERS_DATA] ([UID], history_type) VALUES ((select [UID] from INSERTED), 'IN')
+INSERT INTO [history].[USERS_DATA] ([UID], [PID], history_type) SELECT [UID], [PID], 'IN' from INSERTED
 GO
-CREATE TRIGGER [USR].[USERS_DATA_history_UPDATE] on [USR].[USERS] FOR UPDATE
+CREATE TRIGGER [USR].[USERS_DATA_history_UPDATE] on [USR].[USERS_DATA] FOR UPDATE
 AS
-INSERT INTO [history].[USERS_DATA] ([UID], history_type) VALUES ((select [UID] from INSERTED), 'UP')
+INSERT INTO [history].[USERS_DATA] ([UID], [PID], history_type) SELECT [UID], [PID], 'UP' from INSERTED
 GO
-CREATE TRIGGER [USR].[USERS_DATA_history_DELETE] on [USR].[USERS] FOR DELETE
+CREATE TRIGGER [USR].[USERS_DATA_history_DELETE] on [USR].[USERS_DATA] FOR DELETE
 AS
-INSERT INTO [history].[USERS_DATA] ([UID], history_type) VALUES ((select [UID] from DELETED), 'DE')
+INSERT INTO [history].[USERS_DATA] ([UID], [PID], history_type) SELECT [UID], [PID], 'DE' from DELETED
 GO
 
-CREATE TABLE [USR].[USERS_MONEY]
+CREATE TABLE [USR].[USERS_MONEY] --final balance
 (
 [ID] int IDENTITY(1,1) PRIMARY KEY,
 [UID] int,
@@ -75,6 +78,7 @@ CREATE TABLE [HISTORY].[USERS_MONEY]
 (
 [ID] int IDENTITY(1,1) PRIMARY KEY,
 [UID] int,
+[MONEY] money,
 [history_by] VARCHAR(200) DEFAULT ORIGINAL_LOGIN(),
 [history_type] VARCHAR(2),
 [history_when] datetime DEFAULT GETDATE()
@@ -83,15 +87,15 @@ CREATE TABLE [HISTORY].[USERS_MONEY]
 GO
 CREATE TRIGGER [USR].[USERS_MONEY_history_INSERT] on [USR].[USERS_MONEY] FOR INSERT
 AS
-INSERT INTO [history].[USERS_DATA] ([UID], history_type) VALUES ((select [ID] from INSERTED), 'IN')
+INSERT INTO [history].[USERS_MONEY] ([UID], [MONEY], history_type) select [ID], [MONEY], 'IN' from INSERTED
 GO
 CREATE TRIGGER [USR].[USERS_MONEY_history_UPDATE] on [USR].[USERS_MONEY] FOR UPDATE
 AS
-INSERT INTO [history].[USERS_DATA] ([UID], history_type) VALUES ((select [ID] from INSERTED), 'UP')
+INSERT INTO [history].[USERS_MONEY] ([UID], [MONEY], history_type) select [ID], [MONEY], 'UP' from INSERTED
 GO
 CREATE TRIGGER [USR].[USERS_MONEY_history_DELETE] on [USR].[USERS_MONEY] FOR DELETE
 AS
-INSERT INTO [history].[USERS_DATA] ([UID], history_type) VALUES ((select [ID] from DELETED), 'DE')
+INSERT INTO [history].[USERS_MONEY] ([UID], [MONEY], history_type) select [ID], [MONEY], 'DE' from DELETED
 GO
 
 CREATE TABLE [USR].[TRANSACTIONS]
@@ -100,6 +104,19 @@ CREATE TABLE [USR].[TRANSACTIONS]
 [UID] int NOT NULL,
 [AMOUNT] money,
 [TYPE] VARCHAR(2) CHECK ([TYPE] = 'CR' OR [TYPE] = 'DR'),
+[UM_ID] int, --USER MONEY ID
 [TIME] DATETIME DEFAULT GETDATE(),
 [STATUS] CHAR DEFAULT 'P' CHECK ([STATUS] = 'S' OR [STATUS] = 'F' OR [STATUS] = 'P') --SUCCESS/FAIL/PENDING
+)
+
+CREATE TABLE [HISTORY].[TRANSACTIONS]
+(
+[ID] int IDENTITY(1,1) PRIMARY KEY,
+[TID] int NOT NULL,
+[AMOUNT] money,
+[TYPE] CHAR(2) CHECK ([TYPE] = 'CR' OR [TYPE] = 'DR'),
+[UM_ID] int,
+[history_by] VARCHAR(200) DEFAULT ORIGINAL_LOGIN(),
+[history_type] VARCHAR(2),
+[history_when] datetime DEFAULT GETDATE()
 )
